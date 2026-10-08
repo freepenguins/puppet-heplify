@@ -1,17 +1,24 @@
 ---
-# Module defaults for heplify. Override any key in your control repo's Hiera.
-# Out of the box: capture SIP on every interface, send HEPv3 over UDP to a
-# heplify-server on this host (heplify-server's default HEPAddr is 0.0.0.0:9060).
+# Defaults for every heplify class parameter. Override any key in your own
+# Hiera. Out of the box: capture SIP on every interface and send HEPv3 over
+# UDP to a heplify-server on the same host (its default HEPAddr is
+# 0.0.0.0:9060).
 
 # --- install ---------------------------------------------------------------
 heplify::version: '2.0.28'
 heplify::install_method: binary
 heplify::download_base_url: 'https://github.com/sipcapture/heplify/releases/download'
+# Upstream publishes no checksum files; these were computed from the release
+# assets. Add an entry here (or in your Hiera) for each version you deploy.
+heplify::checksums:
+  '2.0.28':
+    amd64: 'c91927c793248f153bd07725a39b94145ef893a364d3029e64f4e1f9769a2faa'
+    arm64: '19783aa73964082ae9b94a6ef893c457289ad122fe44f605e194478177522151'
 heplify::checksum: ~
 heplify::package_name: heplify
 heplify::install_dir: /opt/heplify
 heplify::bin_path: /usr/local/bin/heplify
-heplify::config_file: /etc/heplify/heplify.json
+heplify::config_dir: /etc/heplify
 
 # --- capture ---------------------------------------------------------------
 heplify::interface: any
@@ -27,7 +34,7 @@ heplify::ip_defrag: true
 heplify::vlan: false
 heplify::bpf_filter: ''
 
-# --- HEP destination: heplify-server on the same host ----------------------
+# --- HEP destination -------------------------------------------------------
 heplify::hep_host: 127.0.0.1
 heplify::hep_port: 9060
 heplify::hep_transport: udp
@@ -35,7 +42,7 @@ heplify::hep_password: ''
 heplify::node_name: "%{facts.networking.hostname}"
 heplify::node_id: 2002
 
-# --- filtering / logging ---------------------------------------------------
+# --- filtering and logging -------------------------------------------------
 heplify::deduplicate: false
 heplify::discard_methods: []
 heplify::log_level: info
@@ -50,11 +57,11 @@ heplify::after_units:
   - heplify-server.service
 
 lookup_options:
+  heplify::checksums:
+    merge:
+      strategy: deep
   heplify::config_overrides:
     merge:
       strategy: deep
-  heplify::discard_methods:
-    merge:
-      strategy: unique
   heplify::hep_password:
     convert_to: Sensitive

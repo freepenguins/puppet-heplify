@@ -1,0 +1,9 @@
+# This file can be used to install module dependencies for unit testing
+# See https://github.com/puppetlabs/puppetlabs_spec_helper#using-fixtures for details
+---
+fixtures:
+  forge_modules:
+    # 9.x is the stdlib line that supports both Puppet 7 and Puppet 8.
+    stdlib:
+      repo: "puppetlabs/stdlib"
+      ref: "9.7.0"

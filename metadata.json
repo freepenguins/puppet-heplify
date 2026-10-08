@@ -1,0 +1,73 @@
+{
+  "name": "freepenguins-heplify",
+  "version": "0.1.0",
+  "author": "freepenguins",
+  "summary": "Installs and configures the HOMER heplify HEP capture agent",
+  "license": "Apache-2.0",
+  "source": "https://github.com/freepenguins/puppet-heplify",
+  "project_page": "https://github.com/freepenguins/puppet-heplify",
+  "issues_url": "https://github.com/freepenguins/puppet-heplify/issues",
+  "dependencies": [
+    {
+      "name": "puppetlabs/stdlib",
+      "version_requirement": ">= 9.0.0 < 11.0.0"
+    }
+  ],
+  "operatingsystem_support": [
+    {
+      "operatingsystem": "Debian",
+      "operatingsystemrelease": [
+        "11",
+        "12",
+        "13"
+      ]
+    },
+    {
+      "operatingsystem": "Ubuntu",
+      "operatingsystemrelease": [
+        "22.04",
+        "24.04"
+      ]
+    },
+    {
+      "operatingsystem": "RedHat",
+      "operatingsystemrelease": [
+        "8",
+        "9"
+      ]
+    },
+    {
+      "operatingsystem": "Rocky",
+      "operatingsystemrelease": [
+        "8",
+        "9"
+      ]
+    },
+    {
+      "operatingsystem": "AlmaLinux",
+      "operatingsystemrelease": [
+        "8",
+        "9"
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "name": "puppet",
+      "version_requirement": ">= 7.0.0 < 9.0.0"
+    }
+  ],
+  "tags": [
+    "homer",
+    "heplify",
+    "hep",
+    "sipcapture",
+    "sip",
+    "voip",
+    "capture",
+    "monitoring"
+  ],
+  "pdk-version": "3.4.0",
+  "template-url": "https://github.com/puppetlabs/pdk-templates#main",
+  "template-ref": "tags/4.0.1-0-g826bc75"
+}
