@@ -1,0 +1,34 @@
+<%- | Stdlib::Absolutepath $bin_path,
+      Stdlib::Absolutepath $config_file,
+      String               $user,
+      String               $group,
+      Array[String]        $after_units,
+| -%>
+# Managed by Puppet (module heplify) - local changes will be overwritten.
+[Unit]
+Description=heplify-server - HEP collector for HOMER
+Documentation=https://github.com/sipcapture/heplify-server
+Wants=network-online.target
+After=<%= (['network-online.target'] + $after_units).unique.join(' ') %>
+
+[Service]
+Type=simple
+User=<%= $user %>
+Group=<%= $group %>
+ExecStart=<%= $bin_path %> -config=<%= $config_file %>
+Restart=on-failure
+RestartSec=10s
+LimitNOFILE=65536
+
+# With LogStd and LogSys both false, heplify-server writes heplify-server.log
+# to its working directory.
+LogsDirectory=heplify-server
+WorkingDirectory=/var/log/heplify-server
+
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

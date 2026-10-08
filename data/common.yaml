@@ -56,6 +56,52 @@ heplify::service_enable: true
 heplify::after_units:
   - heplify-server.service
 
+# --- heplify-server (class heplify::server) --------------------------------
+heplify::server::version: '1.60.1'
+heplify::server::install_method: binary
+heplify::server::download_base_url: 'https://github.com/sipcapture/heplify-server/releases/download'
+# Computed from the v1.60.1 release assets, like the agent checksums above.
+heplify::server::checksums:
+  '1.60.1':
+    amd64: '6077a620cbcb13791fac06f9a3d30379fa088e4b1b87dbdde4b4dc001ba808b0'
+    arm64: 'a0b66f0b02b529bf10bc4b193ea36fc02ee7a10e13239537c55ecf950f769d77'
+heplify::server::checksum: ~
+heplify::server::package_name: heplify-server
+heplify::server::install_dir: /opt/heplify-server
+heplify::server::bin_path: /usr/local/bin/heplify-server
+heplify::server::config_file: /etc/heplify-server.toml
+heplify::server::manage_user: true
+heplify::server::user: heplify-server
+heplify::server::group: heplify-server
+# heplify-server setting names. Anything not listed uses heplify-server's
+# built-in default, so settings whose built-in default is wrong for HOMER 7
+# (database driver, schema, config table, Prometheus listener) are set here.
+heplify::server::settings:
+  HEPAddr: '0.0.0.0:9060'
+  HEPTCPAddr: ''
+  HEPTLSAddr: ''
+  HEPWSAddr: ''
+  PromAddr: ''
+  DBShema: homer7
+  DBDriver: postgres
+  DBAddr: 'localhost:5432'
+  DBUser: homer
+  DBDataTable: homer_data
+  DBConfTable: homer_config
+  DBRotate: true
+  DBDropDays: 14
+  LogLvl: info
+  LogStd: true
+  LogSys: false
+heplify::server::db_password: ''
+heplify::server::allow_db_superuser: false
+heplify::server::manage_service: true
+heplify::server::service_name: heplify-server
+heplify::server::service_ensure: running
+heplify::server::service_enable: true
+heplify::server::after_units:
+  - postgresql.service
+
 lookup_options:
   heplify::checksums:
     merge:
@@ -64,4 +110,12 @@ lookup_options:
     merge:
       strategy: deep
   heplify::hep_password:
+    convert_to: Sensitive
+  heplify::server::checksums:
+    merge:
+      strategy: deep
+  heplify::server::settings:
+    merge:
+      strategy: deep
+  heplify::server::db_password:
     convert_to: Sensitive

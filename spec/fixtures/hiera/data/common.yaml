@@ -1,0 +1,5 @@
+---
+heplify::server::db_password: 'from-hiera'
+heplify::server::settings:
+  DBAddr: 'db.example.com:5432'
+  PromAddr: '127.0.0.1:9096'

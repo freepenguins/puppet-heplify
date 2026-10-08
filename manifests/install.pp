@@ -6,11 +6,7 @@ class heplify::install {
 
   case $heplify::install_method {
     'binary': {
-      $arch = $facts['os']['architecture'] ? {
-        /^(x86_64|amd64)$/  => 'amd64',
-        /^(aarch64|arm64)$/ => 'arm64',
-        default             => fail("heplify: no release binary for architecture ${facts['os']['architecture']}"),
-      }
+      $arch = heplify::release_arch($facts['os']['architecture'], 'heplify')
 
       $checksum = $heplify::checksum ? {
         undef   => $heplify::checksums.dig($heplify::version, $arch),

@@ -14,19 +14,24 @@
 
 ## Description
 
-This module installs and runs [heplify](https://github.com/sipcapture/heplify),
-the capture agent for the [HOMER](https://sipcapture.org) VoIP monitoring
-platform. heplify sniffs SIP (and optionally RTCP, RTP, DNS, LOG or Diameter)
-on a host and forwards it as HEP to a heplify-server.
+This module installs and runs the two server-side pieces of the
+[HOMER](https://sipcapture.org) VoIP monitoring platform:
 
-Every setting is a class parameter with a default in the module's Hiera data,
-so you configure the agent with `heplify::*` keys in your own Hiera. Out of the
-box it captures SIP on ports 5060-5090 on every interface and sends HEPv3 over
-UDP to a heplify-server on the same host (`127.0.0.1:9060`, heplify-server's
-default listener).
+* `heplify`: the [heplify](https://github.com/sipcapture/heplify) capture
+  agent. It sniffs SIP (and optionally RTCP, RTP, DNS, LOG or Diameter) on a
+  host and forwards it as HEP. Out of the box it captures SIP on ports
+  5060-5090 on every interface and sends HEPv3 over UDP to `127.0.0.1:9060`.
+* `heplify::server`: [heplify-server](https://github.com/sipcapture/heplify-server),
+  the collector. It receives HEP from agents and from SIP servers that send HEP
+  natively, and stores it in PostgreSQL for the HOMER web UI. Out of the box it
+  listens on UDP `0.0.0.0:9060` and writes to a local PostgreSQL as `homer`.
 
-The module targets heplify 2.x, which is configured with a JSON file rather
-than command-line flags.
+Use either class on its own or both on one host. Every setting is a class
+parameter with a default in the module's Hiera data, so you configure them
+with `heplify::*` and `heplify::server::*` keys in your own Hiera.
+
+The agent class targets heplify 2.x, which is configured with a JSON file
+rather than command-line flags.
 
 ## Setup
 
@@ -44,6 +49,19 @@ than command-line flags.
 With `install_method: package` the module installs a `heplify` package instead
 of the binary; with `install_method: none` it leaves installation to you.
 
+`heplify::server` manages:
+
+* `/opt/heplify-server/heplify-server-<version>` and the
+  `/usr/local/bin/heplify-server` symlink, installed the same way
+* `/etc/heplify-server.toml`: the collector configuration, mode `0640`,
+  readable by the service group
+* the `heplify-server` system user and group
+* `/etc/systemd/system/heplify-server.service`: runs heplify-server as that
+  user, with `/var/log/heplify-server` as its working directory
+* the `heplify-server` service
+
+It does not manage PostgreSQL or the HOMER web UI (homer-app).
+
 ### Setup requirements
 
 * [puppetlabs/stdlib](https://forge.puppet.com/modules/puppetlabs/stdlib):
@@ -54,16 +72,34 @@ of the binary; with `install_method: none` it leaves installation to you.
 * For the default install method, nodes must reach
   `https://github.com/sipcapture/heplify/releases`, or a mirror you set in
   `heplify::download_base_url`.
-* A heplify-server that accepts HEP on the configured host, port and
-  transport.
+* For the agent: a heplify-server that accepts HEP on the configured host,
+  port and transport.
+* For `heplify::server`: PostgreSQL 10 or later, with the `homer_data` and
+  `homer_config` databases owned by a dedicated user (see
+  [Run heplify-server](#run-heplify-server)). Nodes must reach
+  `https://github.com/sipcapture/heplify-server/releases`, or a mirror you set
+  in `heplify::server::download_base_url`.
 
 ### Beginning with heplify
 
-On a host that also runs heplify-server with its default settings:
+On a SIP server whose traffic you want in HOMER, pointing at your HOMER host:
 
 ```puppet
-include heplify
+class { 'heplify':
+  hep_host => 'homer.example.com',
+}
 ```
+
+On the HOMER host, once the databases exist:
+
+```puppet
+class { 'heplify::server':
+  db_password => Sensitive('change-me'),
+}
+```
+
+On a single host running both, `include heplify` needs no settings: the agent
+already sends to `127.0.0.1:9060`.
 
 ## Usage
 
@@ -195,6 +231,12 @@ Compute each value with `sha256sum` on a copy of the release asset you trust.
 For one-off cases, `heplify::checksum` overrides the lookup for a single node.
 If neither is set for a version, the binary is downloaded without verification.
 
+`heplify::server::version`, `heplify::server::checksums` and
+`heplify::server::checksum` work the same way for heplify-server. Its release
+tags start with `v`, which the module adds: the binary is fetched from
+`<download_base_url>/v<version>/heplify-server`, or `heplify-server-arm64` on
+arm64.
+
 ### Install from a mirror or a package
 
 ```yaml
@@ -207,6 +249,107 @@ heplify::download_base_url: 'https://artifacts.example.com/heplify'
 heplify::install_method: package
 heplify::version: '2.0.28'
 ```
+
+### Relay HEP to several heplify-servers
+
+FreeSWITCH, for example, can send HEP to only one capture server. To copy HEP
+to several servers, run the agent as a relay on the sending host: turn packet
+capture off, listen for HEP locally and list every destination. Each active
+transport gets a copy; set `failover_only: true` on one to use it only when the
+others are unreachable.
+
+```yaml
+heplify::config_overrides:
+  socket:
+    - name: default
+      active: false
+  collector_settings:
+    active: true
+    host: 127.0.0.1
+    port: 9070
+    proto: udp
+  transport:
+    - name: homer-a
+      active: true
+      protocol: HEPv3
+      transport: udp
+      host: 10.0.0.10
+      port: 9060
+    - name: homer-b
+      active: true
+      protocol: HEPv3
+      transport: udp
+      host: 10.0.0.20
+      port: 9060
+```
+
+Then point the sender at `127.0.0.1:9070`.
+
+### Run heplify-server
+
+Create the databases first. heplify-server creates its tables, but not the
+databases, and it needs to own them to create table partitions. With
+[puppetlabs/postgresql](https://forge.puppet.com/modules/puppetlabs/postgresql):
+
+```puppet
+class { 'postgresql::server': }
+
+postgresql::server::db { 'homer_data':
+  user     => 'homer',
+  password => Sensitive('change-me'),
+  owner    => 'homer',
+}
+
+postgresql::server::database { 'homer_config':
+  owner => 'homer',
+}
+
+include heplify::server
+Postgresql::Server::Db['homer_data'] -> Class['heplify::server']
+```
+
+Or by hand:
+
+```sql
+CREATE USER homer WITH PASSWORD 'change-me';
+CREATE DATABASE homer_data OWNER homer;
+CREATE DATABASE homer_config OWNER homer;
+```
+
+Then configure heplify-server from Hiera. `heplify::server::settings` uses
+heplify-server's own setting names and is deep-merged over the module
+defaults, so list only what you change. Keep the password in an encrypted
+backend such as hiera-eyaml.
+
+```yaml
+heplify::server::db_password: >
+  ENC[PKCS7,...]
+heplify::server::settings:
+  DBAddr: 'db.example.com:5432'
+  DBDropDays: 30
+  PromAddr: '127.0.0.1:9096'      # Prometheus metrics (off by default)
+```
+
+Set `settings` through Hiera rather than as a class parameter. A class
+parameter replaces the whole hash, so the module defaults (database driver,
+schema and user) would be lost.
+
+Notes:
+
+* Don't use `postgres`, `root` or `admin` as `DBUser`. heplify-server treats
+  them as administrators and creates a `homer_user` with the fixed password
+  `homer_password`. The module refuses these users unless you set
+  `heplify::server::allow_db_superuser: true`.
+* heplify-server fills `homer_data`. The `homer_config` tables are created by
+  homer-app, the HOMER 7 web UI, which you install separately.
+* If heplify-server cannot parse its configuration file, it silently starts
+  with built-in defaults (a HOMER 5 MySQL database as `root`). The module
+  always generates valid TOML, but check `journalctl -u heplify-server` after
+  hand edits.
+* Logs go to the journal (`LogStd: true`). With `LogStd` and `LogSys` both
+  `false`, heplify-server writes `heplify-server.log` to
+  `/var/log/heplify-server` instead.
+* The service runs unprivileged, so HEP listeners must use ports above 1023.
 
 ## Reference
 
@@ -227,6 +370,8 @@ rather than in the class.
   or failover destinations, replace the `transport` and `socket` arrays through
   `heplify::config_overrides`.
 * On Puppet 7, use puppetlabs/stdlib 9.x.
+* `heplify::server` is tested with the HOMER 7 schema on PostgreSQL. It does
+  not manage the database server or homer-app.
 
 ## Development
 
