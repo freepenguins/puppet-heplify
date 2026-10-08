@@ -1,0 +1,30 @@
+<%- | Stdlib::Absolutepath $bin_path,
+      Stdlib::Absolutepath $config_file,
+      Array[String]        $after_units,
+| -%>
+# Managed by Puppet (module heplify) - local changes will be overwritten.
+[Unit]
+Description=heplify - HEP capture agent for HOMER
+Documentation=https://github.com/sipcapture/heplify
+Wants=network-online.target
+After=<%= (['network-online.target'] + $after_units).unique.join(' ') %>
+
+[Service]
+Type=simple
+User=root
+ExecStart=<%= $bin_path %> -config <%= $config_file %>
+Restart=always
+RestartSec=3s
+LimitNOFILE=65536
+
+# heplify only needs raw-socket access, so root is stripped down to that.
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+StateDirectory=heplify
+WorkingDirectory=/var/lib/heplify
+
+[Install]
+WantedBy=multi-user.target

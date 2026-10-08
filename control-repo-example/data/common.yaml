@@ -1,0 +1,21 @@
+---
+# Site-wide heplify settings. Anything not listed here falls back to the
+# module defaults in modules/heplify/data/common.yaml.
+
+# Classes are assigned from Hiera (see manifests/site.pp).
+classes:
+  - heplify
+
+# Pin the release and its sha256 together; bump both when upgrading.
+# This hash is for heplify_linux_amd64 2.0.28. Upstream publishes no checksum
+# file, so verify it against your own download before trusting it.
+heplify::version: '2.0.28'
+heplify::checksum: 'c91927c793248f153bd07725a39b94145ef893a364d3029e64f4e1f9769a2faa'
+
+# SIP only, to the heplify-server on the same host (these are the defaults,
+# repeated here so the intent is visible in your own data).
+heplify::capture_mode:
+  - SIP
+heplify::hep_host: 127.0.0.1
+heplify::hep_port: 9060
+heplify::hep_transport: udp

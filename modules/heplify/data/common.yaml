@@ -1,0 +1,60 @@
+---
+# Module defaults for heplify. Override any key in your control repo's Hiera.
+# Out of the box: capture SIP on every interface, send HEPv3 over UDP to a
+# heplify-server on this host (heplify-server's default HEPAddr is 0.0.0.0:9060).
+
+# --- install ---------------------------------------------------------------
+heplify::version: '2.0.28'
+heplify::install_method: binary
+heplify::download_base_url: 'https://github.com/sipcapture/heplify/releases/download'
+heplify::checksum: ~
+heplify::package_name: heplify
+heplify::install_dir: /opt/heplify
+heplify::bin_path: /usr/local/bin/heplify
+heplify::config_file: /etc/heplify/heplify.json
+
+# --- capture ---------------------------------------------------------------
+heplify::interface: any
+heplify::socket_type: afpacket
+heplify::promisc: true
+heplify::capture_mode:
+  - SIP
+heplify::sip_port_min: 5060
+heplify::sip_port_max: 5090
+heplify::tcp_reassembly: true
+heplify::sip_reassembly: false
+heplify::ip_defrag: true
+heplify::vlan: false
+heplify::bpf_filter: ''
+
+# --- HEP destination: heplify-server on the same host ----------------------
+heplify::hep_host: 127.0.0.1
+heplify::hep_port: 9060
+heplify::hep_transport: udp
+heplify::hep_password: ''
+heplify::node_name: "%{facts.networking.hostname}"
+heplify::node_id: 2002
+
+# --- filtering / logging ---------------------------------------------------
+heplify::deduplicate: false
+heplify::discard_methods: []
+heplify::log_level: info
+heplify::config_overrides: {}
+
+# --- service ---------------------------------------------------------------
+heplify::manage_service: true
+heplify::service_name: heplify
+heplify::service_ensure: running
+heplify::service_enable: true
+heplify::after_units:
+  - heplify-server.service
+
+lookup_options:
+  heplify::config_overrides:
+    merge:
+      strategy: deep
+  heplify::discard_methods:
+    merge:
+      strategy: unique
+  heplify::hep_password:
+    convert_to: Sensitive
