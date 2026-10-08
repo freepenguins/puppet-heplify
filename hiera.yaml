@@ -6,6 +6,10 @@ defaults:  # Used for any hierarchy level that omits these keys.
   data_hash: yaml_data  # Use the built-in YAML backend.
 
 hierarchy:
+  - name: "os name/distro codename"
+    # For example os/Debian/bookworm.yaml or os/Ubuntu/noble.yaml.
+    # RedHat-family codenames contain spaces, for example os/Rocky/Blue Onyx.yaml.
+    path: "os/%{facts.os.name}/%{facts.os.distro.codename}.yaml"
   - name: "osfamily/major release"
     paths:
         # Used to distinguish between Debian and Ubuntu
