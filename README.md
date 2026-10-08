@@ -240,12 +240,16 @@ pdk test unit
 pdk build
 ```
 
-The PDK Gemfile installs Puppet from the Puppet Core gem source by default,
-which needs a `PUPPET_FORGE_TOKEN`. To use the public gems instead (needed to
-test against Puppet 7), opt out first:
+The module is pinned to pdk-templates 3.8.0 (`template-url` in
+`metadata.json`). Its Gemfile installs Puppet from the public rubygems.org
+unless `PUPPET_FORGE_TOKEN` is set, in which case it uses the Puppet Core gem
+source. pdk-templates 4.x makes Puppet Core the default, and its only opt-out
+is a Bundler setting that PDK ignores, so `pdk validate` cannot use public gems
+with those templates. Keep the pin unless you have Puppet Core credentials.
+
+To test against a specific Puppet version without PDK:
 
 ```shell
-bundle config set gemsource.public true
 PUPPET_GEM_VERSION='~> 7' bundle exec rake spec
 PUPPET_GEM_VERSION='~> 8' bundle exec rake spec
 ```
