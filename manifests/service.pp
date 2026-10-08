@@ -6,17 +6,18 @@ class heplify::service {
 
   if $heplify::manage_service {
     $unit_file = "/etc/systemd/system/${heplify::service_name}.service"
+    $unit_params = {
+      'bin_path'    => $heplify::bin_path,
+      'config_file' => "${heplify::config_dir}/heplify.json",
+      'after_units' => $heplify::after_units,
+    }
 
     file { $unit_file:
       ensure  => file,
       owner   => 'root',
       group   => 'root',
       mode    => '0644',
-      content => epp('heplify/heplify.service.epp', {
-        'bin_path'    => $heplify::bin_path,
-        'config_file' => "${heplify::config_dir}/heplify.json",
-        'after_units' => $heplify::after_units,
-      }),
+      content => epp('heplify/heplify.service.epp', $unit_params),
     }
 
     exec { "${heplify::service_name}-systemctl-daemon-reload":
