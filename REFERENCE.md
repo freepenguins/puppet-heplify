@@ -9,11 +9,15 @@
 #### Public Classes
 
 * [`heplify`](#heplify): Installs, configures and runs the HOMER heplify HEP capture agent.
+* [`heplify::server`](#heplify--server): Installs, configures and runs heplify-server, the HOMER HEP collector.
 
 #### Private Classes
 
 * `heplify::config`: Writes heplify.json from the class parameters.
 * `heplify::install`: Installs the heplify binary or package.
+* `heplify::server::config`: Writes the heplify-server TOML configuration.
+* `heplify::server::install`: Installs heplify-server and its service account.
+* `heplify::server::service`: Manages the heplify-server systemd unit and service.
 * `heplify::service`: Manages the heplify systemd unit and service.
 
 ### Functions
@@ -21,10 +25,12 @@
 #### Private Functions
 
 * `heplify::deep_merge`: Recursively merges two hashes.
+* `heplify::release_arch`: Maps a node architecture to the name used in sipcapture release assets.
 
 ### Data types
 
 * [`Heplify::CaptureMode`](#Heplify--CaptureMode): A protocol heplify can capture, as used in `capture_mode`.
+* [`Heplify::ServerSetting`](#Heplify--ServerSetting): A heplify-server setting value as written to its TOML file.
 * [`Heplify::Sha256`](#Heplify--Sha256): A lowercase hex SHA-256 digest.
 
 ## Classes
@@ -322,6 +328,199 @@ Data type: `Array[String[1]]`
 systemd units heplify is ordered after, in addition to
 `network-online.target`. Units that do not exist are ignored by systemd.
 
+### <a name="heplify--server"></a>`heplify::server`
+
+heplify-server receives HEP from capture agents (such as the `heplify`
+class in this module) and from SIP servers that send HEP natively, and
+stores it in a database for the HOMER web UI. Every parameter has a
+default in the module's Hiera data.
+
+The defaults listen for HEP on UDP 0.0.0.0:9060 and store HOMER 7 data in
+a local PostgreSQL as the user `homer`. The module does not manage the
+database: create the `homer_data` and `homer_config` databases and the
+user beforehand (see the README).
+
+#### Examples
+
+##### Collector with a local PostgreSQL
+
+```puppet
+class { 'heplify::server':
+  db_password => Sensitive('change-me'),
+}
+```
+
+##### Change individual heplify-server settings from Hiera
+
+```puppet
+heplify::server::db_password: 'change-me'
+heplify::server::settings:
+  DBAddr: 'db.example.com:5432'
+  PromAddr: '127.0.0.1:9096'
+```
+
+#### Parameters
+
+The following parameters are available in the `heplify::server` class:
+
+* [`version`](#-heplify--server--version)
+* [`install_method`](#-heplify--server--install_method)
+* [`download_base_url`](#-heplify--server--download_base_url)
+* [`checksums`](#-heplify--server--checksums)
+* [`checksum`](#-heplify--server--checksum)
+* [`package_name`](#-heplify--server--package_name)
+* [`install_dir`](#-heplify--server--install_dir)
+* [`bin_path`](#-heplify--server--bin_path)
+* [`config_file`](#-heplify--server--config_file)
+* [`manage_user`](#-heplify--server--manage_user)
+* [`user`](#-heplify--server--user)
+* [`group`](#-heplify--server--group)
+* [`settings`](#-heplify--server--settings)
+* [`db_password`](#-heplify--server--db_password)
+* [`allow_db_superuser`](#-heplify--server--allow_db_superuser)
+* [`manage_service`](#-heplify--server--manage_service)
+* [`service_name`](#-heplify--server--service_name)
+* [`service_ensure`](#-heplify--server--service_ensure)
+* [`service_enable`](#-heplify--server--service_enable)
+* [`after_units`](#-heplify--server--after_units)
+
+##### <a name="-heplify--server--version"></a>`version`
+
+Data type: `String[1]`
+
+heplify-server release to install, for example `'1.60.1'`. With
+`install_method => 'package'` this is the package version.
+
+##### <a name="-heplify--server--install_method"></a>`install_method`
+
+Data type: `Enum['binary', 'package', 'none']`
+
+`binary` downloads the release binary, `package` installs `package_name`
+from a repository you manage, `none` leaves installation to you.
+
+##### <a name="-heplify--server--download_base_url"></a>`download_base_url`
+
+Data type: `String[1]`
+
+Base URL for release binaries. The file fetched is
+`<download_base_url>/v<version>/heplify-server` on amd64 and
+`<download_base_url>/v<version>/heplify-server-arm64` on arm64.
+
+##### <a name="-heplify--server--checksums"></a>`checksums`
+
+Data type: `Hash[String[1], Hash[Enum['amd64', 'arm64'], Heplify::Sha256]]`
+
+SHA-256 checksums of release binaries, keyed by version and then by
+architecture (`amd64`, `arm64`). Merged across your Hiera hierarchy.
+
+##### <a name="-heplify--server--checksum"></a>`checksum`
+
+Data type: `Optional[Heplify::Sha256]`
+
+SHA-256 checksum of the binary. Overrides the `checksums` entry for this
+node. When neither is set the download is not verified.
+
+##### <a name="-heplify--server--package_name"></a>`package_name`
+
+Data type: `String[1]`
+
+Package to install when `install_method` is `package`.
+
+##### <a name="-heplify--server--install_dir"></a>`install_dir`
+
+Data type: `Stdlib::Absolutepath`
+
+Directory holding the versioned binaries (`heplify-server-<version>`).
+
+##### <a name="-heplify--server--bin_path"></a>`bin_path`
+
+Data type: `Stdlib::Absolutepath`
+
+Path the service runs; a symlink to the current versioned binary when
+`install_method` is `binary`.
+
+##### <a name="-heplify--server--config_file"></a>`config_file`
+
+Data type: `Pattern[/\A\/.*\.toml\z/]`
+
+Path of the generated configuration. heplify-server only reads files
+whose name contains `.toml`.
+
+##### <a name="-heplify--server--manage_user"></a>`manage_user`
+
+Data type: `Boolean`
+
+Create the system user and group the service runs as.
+
+##### <a name="-heplify--server--user"></a>`user`
+
+Data type: `String[1]`
+
+User the service runs as.
+
+##### <a name="-heplify--server--group"></a>`group`
+
+Data type: `String[1]`
+
+Group the service runs as; it can read the configuration file.
+
+##### <a name="-heplify--server--settings"></a>`settings`
+
+Data type: `Hash[String[1], Heplify::ServerSetting]`
+
+heplify-server settings written to `config_file`, keyed by their
+heplify-server names (`HEPAddr`, `DBAddr`, `PromAddr`, ...). Deep-merged
+across your Hiera hierarchy over the module defaults. Settings you leave
+out take heplify-server's built-in defaults.
+
+##### <a name="-heplify--server--db_password"></a>`db_password`
+
+Data type: `Variant[String, Sensitive[String]]`
+
+Database password, written as `DBPass`. Converted to `Sensitive` on
+lookup. When any password in the configuration is set, the file diff
+is left out of reports.
+
+##### <a name="-heplify--server--allow_db_superuser"></a>`allow_db_superuser`
+
+Data type: `Boolean`
+
+heplify-server treats the database users `postgres`, `root` and `admin`
+specially: it creates a `homer_user` with the fixed password
+`homer_password` and, on PostgreSQL, grants it the `postgres` role.
+Catalog compilation fails for those users unless this is `true`.
+
+##### <a name="-heplify--server--manage_service"></a>`manage_service`
+
+Data type: `Boolean`
+
+Manage the systemd unit and service.
+
+##### <a name="-heplify--server--service_name"></a>`service_name`
+
+Data type: `String[1]`
+
+Name of the systemd service.
+
+##### <a name="-heplify--server--service_ensure"></a>`service_ensure`
+
+Data type: `Stdlib::Ensure::Service`
+
+Whether the service should be running or stopped.
+
+##### <a name="-heplify--server--service_enable"></a>`service_enable`
+
+Data type: `Boolean`
+
+Whether the service starts at boot.
+
+##### <a name="-heplify--server--after_units"></a>`after_units`
+
+Data type: `Array[String[1]]`
+
+systemd units heplify-server is ordered after, in addition to
+`network-online.target`. Units that do not exist are ignored by systemd.
+
 ## Data types
 
 ### <a name="Heplify--CaptureMode"></a>`Heplify::CaptureMode`
@@ -329,6 +528,12 @@ systemd units heplify is ordered after, in addition to
 A protocol heplify can capture, as used in `capture_mode`.
 
 Alias of `Enum['SIP', 'RTCP', 'RTP', 'DNS', 'LOG', 'DIAMETER']`
+
+### <a name="Heplify--ServerSetting"></a>`Heplify::ServerSetting`
+
+A heplify-server setting value as written to its TOML file.
+
+Alias of `Variant[String, Integer, Boolean, Array[Variant[String, Integer]]]`
 
 ### <a name="Heplify--Sha256"></a>`Heplify::Sha256`
 

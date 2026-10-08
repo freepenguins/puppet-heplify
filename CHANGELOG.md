@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## Release 0.2.0
+
+**Features**
+
+* New `heplify::server` class that installs, configures and runs
+  heplify-server, the HOMER HEP collector. It downloads the release binary for
+  `amd64` or `arm64`, verified against SHA-256 checksums for 1.60.1 shipped in
+  the module's Hiera data, or installs a package. It writes
+  `/etc/heplify-server.toml` from `heplify::server::settings`, deep-merged
+  across Hiera, and runs the service as an unprivileged system user.
+* Refuses database users that make heplify-server create a `homer_user` with a
+  fixed password, unless `allow_db_superuser` is set.
+* README examples for relaying HEP to several heplify-servers and for creating
+  the HOMER databases with puppetlabs/postgresql.
+
+**Bugfixes**
+
+**Known Issues**
+
+* The heplify-server 1.60.1 release binary reports its version as 1.60.2.
+
 ## Release 0.1.0
 
 **Features**
@@ -16,6 +37,10 @@ All notable changes to this project will be documented in this file.
 * Runs heplify under a systemd unit limited to `CAP_NET_RAW` and
   `CAP_NET_ADMIN`.
 * Supports Puppet 7 and 8 on Debian, Ubuntu, RedHat, Rocky and AlmaLinux.
+* Module Hiera data can be set per distro codename
+  (`data/os/<os.name>/<codename>.yaml`).
+* Pinned to pdk-templates 3.8.0, so `pdk validate` and `pdk test unit` work
+  without Puppet Core credentials.
 
 **Bugfixes**
 

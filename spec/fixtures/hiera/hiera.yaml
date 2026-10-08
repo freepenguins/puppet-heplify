@@ -1,0 +1,10 @@
+---
+# Global Hiera layer used by the heplify::server spec to check that its
+# settings are deep-merged with the module data.
+version: 5
+defaults:
+  datadir: data
+  data_hash: yaml_data
+hierarchy:
+  - name: common
+    path: common.yaml
