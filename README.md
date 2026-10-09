@@ -24,7 +24,7 @@ This module installs and runs the two server-side pieces of the
 * `heplify::server`: [heplify-server](https://github.com/sipcapture/heplify-server),
   the collector. It receives HEP from agents and from SIP servers that send HEP
   natively, and stores it in PostgreSQL for the HOMER web UI. Out of the box it
-  listens on UDP `0.0.0.0:9060` and writes to a local PostgreSQL as `homer`.
+  listens on UDP `0.0.0.0:9060` and writes to a local PostgreSQL as `homer_user`.
 
 Use either class on its own or both on one host. Every setting is a class
 parameter with a default in the module's Hiera data, so you configure them
@@ -93,10 +93,12 @@ class { 'heplify':
 On the HOMER host, once the databases exist:
 
 ```puppet
-class { 'heplify::server':
-  db_password => Sensitive('change-me'),
-}
+include heplify::server
 ```
+
+This connects as `homer_user` with the password `homer_password`, homer-app's
+defaults. Set your own password in production (see
+[Run heplify-server](#run-heplify-server)).
 
 On a single host running both, `include heplify` needs no settings: the agent
 already sends to `127.0.0.1:9060`.
@@ -295,13 +297,13 @@ databases, and it needs to own them to create table partitions. With
 class { 'postgresql::server': }
 
 postgresql::server::db { 'homer_data':
-  user     => 'homer',
-  password => Sensitive('change-me'),
-  owner    => 'homer',
+  user     => 'homer_user',
+  password => Sensitive('homer_password'),
+  owner    => 'homer_user',
 }
 
 postgresql::server::database { 'homer_config':
-  owner => 'homer',
+  owner => 'homer_user',
 }
 
 include heplify::server
@@ -311,12 +313,16 @@ Postgresql::Server::Db['homer_data'] -> Class['heplify::server']
 Or by hand:
 
 ```sql
-CREATE USER homer WITH PASSWORD 'change-me';
-CREATE DATABASE homer_data OWNER homer;
-CREATE DATABASE homer_config OWNER homer;
+CREATE USER homer_user WITH PASSWORD 'homer_password';
+CREATE DATABASE homer_data OWNER homer_user;
+CREATE DATABASE homer_config OWNER homer_user;
 ```
 
-Then configure heplify-server from Hiera. `heplify::server::settings` uses
+`homer_user` and `homer_password` are homer-app's default credentials, so a
+stock homer-app reads the same databases without changes. To use your own
+password, change it in PostgreSQL, in homer-app and in Hiera.
+
+Configure heplify-server from Hiera. `heplify::server::settings` uses
 heplify-server's own setting names and is deep-merged over the module
 defaults, so list only what you change. Keep the password in an encrypted
 backend such as hiera-eyaml.
@@ -337,9 +343,11 @@ schema and user) would be lost.
 Notes:
 
 * Don't use `postgres`, `root` or `admin` as `DBUser`. heplify-server treats
-  them as administrators and creates a `homer_user` with the fixed password
-  `homer_password`. The module refuses these users unless you set
-  `heplify::server::allow_db_superuser: true`.
+  them as administrators: it creates `homer_user` itself and grants it the
+  `postgres` role, which makes it a database superuser. The module refuses
+  these users unless you set `heplify::server::allow_db_superuser: true`.
+  Create `homer_user` yourself, as shown above, so it only owns the HOMER
+  databases.
 * heplify-server fills `homer_data`. The `homer_config` tables are created by
   homer-app, the HOMER 7 web UI, which you install separately.
 * If heplify-server cannot parse its configuration file, it silently starts

@@ -85,7 +85,7 @@ heplify::server::settings:
   DBShema: homer7
   DBDriver: postgres
   DBAddr: 'localhost:5432'
-  DBUser: homer
+  DBUser: homer_user
   DBDataTable: homer_data
   DBConfTable: homer_config
   DBRotate: true
@@ -93,7 +93,8 @@ heplify::server::settings:
   LogLvl: info
   LogStd: true
   LogSys: false
-heplify::server::db_password: ''
+# homer-app's default credentials. Override with your own password in production.
+heplify::server::db_password: homer_password
 heplify::server::allow_db_superuser: false
 heplify::server::manage_service: true
 heplify::server::service_name: heplify-server

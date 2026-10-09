@@ -336,13 +336,20 @@ stores it in a database for the HOMER web UI. Every parameter has a
 default in the module's Hiera data.
 
 The defaults listen for HEP on UDP 0.0.0.0:9060 and store HOMER 7 data in
-a local PostgreSQL as the user `homer`. The module does not manage the
+a local PostgreSQL as `homer_user` with the password `homer_password`, the
+credentials homer-app uses by default. The module does not manage the
 database: create the `homer_data` and `homer_config` databases and the
 user beforehand (see the README).
 
 #### Examples
 
-##### Collector with a local PostgreSQL
+##### Collector with a local PostgreSQL and homer-app's default credentials
+
+```puppet
+include heplify::server
+```
+
+##### Collector with your own database password
 
 ```puppet
 class { 'heplify::server':
@@ -486,9 +493,9 @@ is left out of reports.
 Data type: `Boolean`
 
 heplify-server treats the database users `postgres`, `root` and `admin`
-specially: it creates a `homer_user` with the fixed password
-`homer_password` and, on PostgreSQL, grants it the `postgres` role.
-Catalog compilation fails for those users unless this is `true`.
+as administrators: it creates `homer_user` itself and, on PostgreSQL,
+grants it the `postgres` role, making it a database superuser. Catalog
+compilation fails for those users unless this is `true`.
 
 ##### <a name="-heplify--server--manage_service"></a>`manage_service`
 

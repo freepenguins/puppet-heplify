@@ -6,11 +6,15 @@
 # default in the module's Hiera data.
 #
 # The defaults listen for HEP on UDP 0.0.0.0:9060 and store HOMER 7 data in
-# a local PostgreSQL as the user `homer`. The module does not manage the
+# a local PostgreSQL as `homer_user` with the password `homer_password`, the
+# credentials homer-app uses by default. The module does not manage the
 # database: create the `homer_data` and `homer_config` databases and the
 # user beforehand (see the README).
 #
-# @example Collector with a local PostgreSQL
+# @example Collector with a local PostgreSQL and homer-app's default credentials
+#   include heplify::server
+#
+# @example Collector with your own database password
 #   class { 'heplify::server':
 #     db_password => Sensitive('change-me'),
 #   }
@@ -64,9 +68,9 @@
 #   is left out of reports.
 # @param allow_db_superuser
 #   heplify-server treats the database users `postgres`, `root` and `admin`
-#   specially: it creates a `homer_user` with the fixed password
-#   `homer_password` and, on PostgreSQL, grants it the `postgres` role.
-#   Catalog compilation fails for those users unless this is `true`.
+#   as administrators: it creates `homer_user` itself and, on PostgreSQL,
+#   grants it the `postgres` role, making it a database superuser. Catalog
+#   compilation fails for those users unless this is `true`.
 # @param manage_service
 #   Manage the systemd unit and service.
 # @param service_name
@@ -107,9 +111,9 @@ class heplify::server (
   }
   if !$allow_db_superuser and $db_user in ['postgres', 'root', 'admin'] {
     $message = [
-      "heplify::server: DBUser '${db_user}' makes heplify-server create a database user 'homer_user'",
-      "with the password 'homer_password'. Use a dedicated database user, or set",
-      'heplify::server::allow_db_superuser to true.',
+      "heplify::server: DBUser '${db_user}' makes heplify-server create 'homer_user' itself and grant it",
+      'the postgres role, making it a database superuser. Create homer_user yourself and use it as',
+      'DBUser, or set heplify::server::allow_db_superuser to true.',
     ].join(' ')
     fail($message)
   }
