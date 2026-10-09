@@ -31,16 +31,16 @@ describe 'heplify::server' do
         it { is_expected.to contain_file(binary).with(ensure: 'file', mode: '0755', source: "#{release_url}/#{asset}") }
         it { is_expected.to contain_file(binary).with(checksum: 'sha256', checksum_value: shipped_checksums[arch]) }
         it { is_expected.to contain_file('/usr/local/bin/heplify-server').with(ensure: 'link', target: binary) }
-        it { is_expected.to contain_file(config_file).with(owner: 'root', group: 'heplify-server', mode: '0640', show_diff: true) }
+        it { is_expected.to contain_file(config_file).with(owner: 'root', group: 'heplify-server', mode: '0640', show_diff: false) }
         it { is_expected.to contain_file(config_file).with_content(%r{^HEPAddr = "0\.0\.0\.0:9060"$}) }
         it { is_expected.to contain_file(config_file).with_content(%r{^DBShema = "homer7"$}) }
         it { is_expected.to contain_file(config_file).with_content(%r{^DBDriver = "postgres"$}) }
-        it { is_expected.to contain_file(config_file).with_content(%r{^DBUser = "homer"$}) }
+        it { is_expected.to contain_file(config_file).with_content(%r{^DBUser = "homer_user"$}) }
         it { is_expected.to contain_file(config_file).with_content(%r{^DBConfTable = "homer_config"$}) }
         it { is_expected.to contain_file(config_file).with_content(%r{^PromAddr = ""$}) }
         it { is_expected.to contain_file(config_file).with_content(%r{^DBDropDays = 14$}) }
         it { is_expected.to contain_file(config_file).with_content(%r{^LogStd = true$}) }
-        it { is_expected.to contain_file(config_file).without_content(%r{^DBPass}) }
+        it { is_expected.to contain_file(config_file).with_content(%r{^DBPass = "homer_password"$}) }
         it { is_expected.to contain_file(unit_file).with_content(%r{^ExecStart=/usr/local/bin/heplify-server -config=/etc/heplify-server\.toml$}) }
         it { is_expected.to contain_file(unit_file).with_content(%r{^User=heplify-server$}) }
         it { is_expected.to contain_file(unit_file).with_content(%r{^After=network-online\.target postgresql\.service$}) }
@@ -67,7 +67,7 @@ describe 'heplify::server' do
       end
 
       context 'with array and other secret settings' do
-        let(:params) { { settings: { 'DBUser' => 'homer', 'DiscardMethod' => ['OPTIONS', 'NOTIFY'], 'LokiHEPFilter' => [1, 5], 'ConfigHTTPPW' => 'x' } } }
+        let(:params) { { settings: { 'DBUser' => 'homer_user', 'DiscardMethod' => ['OPTIONS', 'NOTIFY'], 'LokiHEPFilter' => [1, 5], 'ConfigHTTPPW' => 'x' } } }
 
         it { is_expected.to contain_file(config_file).with_content(%r{^DiscardMethod = \["OPTIONS", "NOTIFY"\]$}) }
         it { is_expected.to contain_file(config_file).with_content(%r{^LokiHEPFilter = \[1, 5\]$}) }
@@ -77,7 +77,7 @@ describe 'heplify::server' do
       context 'with a superuser database account' do
         let(:params) { { settings: { 'DBUser' => 'postgres' } } }
 
-        it { is_expected.to compile.and_raise_error(%r{DBUser 'postgres' makes heplify-server create a database user 'homer_user'}) }
+        it { is_expected.to compile.and_raise_error(%r{DBUser 'postgres' makes heplify-server create 'homer_user' itself and grant it the postgres role}) }
       end
 
       context 'with settings that leave out DBUser' do

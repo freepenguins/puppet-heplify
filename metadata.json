@@ -1,6 +1,6 @@
 {
   "name": "freepenguins-heplify",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "freepenguins",
   "summary": "Installs and configures the HOMER heplify capture agent and heplify-server",
   "license": "Apache-2.0",

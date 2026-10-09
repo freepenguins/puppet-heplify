@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## Release 0.3.0
+
+**Features**
+
+* heplify-server now defaults to homer-app's database credentials:
+  `DBUser` is `homer_user` (was `homer`) and `heplify::server::db_password`
+  is `homer_password` (was empty). Override the password in production.
+  If you created the user as `homer`, either rename it
+  (`ALTER ROLE homer RENAME TO homer_user;`, then set its password again,
+  because renaming clears an MD5 password) or keep the old name with:
+
+  ```yaml
+  heplify::server::settings:
+    DBUser: homer
+  ```
+
+**Bugfixes**
+
+**Known Issues**
+
 ## Release 0.2.0
 
 **Features**
